@@ -1,5 +1,7 @@
 use actix_http::Payload;
+use actix_web::error::ErrorInternalServerError;
 use actix_web::{web::Data, FromRequest, HttpRequest};
+use futures::executor::block_on;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 
 use secrecy::ExposeSecret;
@@ -13,6 +15,36 @@ use crate::state::AppState;
 
 lazy_static::lazy_static! {
   pub static ref VALIDATION: Validation = Validation::new(Algorithm::HS256);
+}
+
+pub struct UserUid(i64);
+
+impl FromRequest for UserUid {
+  type Error = actix_web::Error;
+
+  type Future = std::future::Ready<Result<Self, Self::Error>>;
+
+  fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
+    let uuid = block_on(UserUuid::from_request(req, payload));
+    match uuid {
+      Ok(user_uuid) => match req.app_data::<Data<AppState>>() {
+        Some(state) => {
+          let pg_pool = &state.pg_pool;
+          let uid = block_on(database::user::uid_from_uuid(pg_pool, &user_uuid));
+
+          match uid {
+            Ok(uid) => std::future::ready(Ok(UserUid(uid))),
+            Err(e) => std::future::ready(Err(ErrorInternalServerError(format!(
+              "Failed to get uid from uuid: {}",
+              e
+            )))),
+          }
+        },
+        None => std::future::ready(Err(ErrorInternalServerError("No app state"))),
+      },
+      Err(e) => std::future::ready(Err(e)),
+    }
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,20 +64,6 @@ impl Deref for UserUuid {
   }
 }
 
-#[derive(Clone, Debug)]
-pub struct UserToken(pub String);
-impl UserToken {
-  pub fn from_auth(auth: Authorization) -> Result<Self, actix_web::Error> {
-    Ok(Self(auth.token))
-  }
-}
-
-impl Display for UserToken {
-  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    f.write_str(&self.0)
-  }
-}
-
 impl FromRequest for UserUuid {
   type Error = actix_web::Error;
 
@@ -60,6 +78,20 @@ impl FromRequest for UserUuid {
       },
       Err(e) => std::future::ready(Err(e)),
     }
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct UserToken(pub String);
+impl UserToken {
+  pub fn from_auth(auth: Authorization) -> Result<Self, actix_web::Error> {
+    Ok(Self(auth.token))
+  }
+}
+
+impl Display for UserToken {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    f.write_str(&self.0)
   }
 }
 
