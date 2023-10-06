@@ -17,7 +17,7 @@ lazy_static::lazy_static! {
   pub static ref VALIDATION: Validation = Validation::new(Algorithm::HS256);
 }
 
-pub struct UserUid(i64);
+pub struct UserUid(pub i64);
 
 impl FromRequest for UserUid {
   type Error = actix_web::Error;
@@ -25,21 +25,40 @@ impl FromRequest for UserUid {
   type Future = std::future::Ready<Result<Self, Self::Error>>;
 
   fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-    let uuid = block_on(UserUuid::from_request(req, payload));
-    match uuid {
-      Ok(user_uuid) => match req.app_data::<Data<AppState>>() {
+    match block_on(UserUuid::from_request(req, payload)) {
+      Ok(uuid) => match req.app_data::<Data<AppState>>() {
         Some(state) => {
           let pg_pool = &state.pg_pool;
-          let uid = block_on(database::user::uid_from_uuid(pg_pool, &user_uuid));
+          let uid = block_on(database::user::uid_from_uuid(pg_pool, &uuid));
 
           match uid {
             Ok(uid) => std::future::ready(Ok(UserUid(uid))),
+
             Err(e) => std::future::ready(Err(ErrorInternalServerError(format!(
               "Failed to get uid from uuid: {}",
               e
             )))),
           }
         },
+        // Some(state) => match block_on(state.user_uid_by_uuid.lock()).get(&uuid) {
+        //   Some(uid) => std::future::ready(Ok(UserUid(*uid))),
+        //   None => {
+        //     let pg_pool = &state.pg_pool;
+        //     let uid = block_on(database::user::uid_from_uuid(pg_pool, &uuid));
+
+        //     match uid {
+        //       Ok(uid) => {
+        //         block_on(state.user_uid_by_uuid.lock()).put(*uuid, uid);
+        //         std::future::ready(Ok(UserUid(uid)))
+        //       },
+
+        //       Err(e) => std::future::ready(Err(ErrorInternalServerError(format!(
+        //         "Failed to get uid from uuid: {}",
+        //         e
+        //       )))),
+        //     }
+        //   },
+        // },
         None => std::future::ready(Err(ErrorInternalServerError("No app state"))),
       },
       Err(e) => std::future::ready(Err(e)),

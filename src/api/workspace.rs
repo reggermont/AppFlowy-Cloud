@@ -6,7 +6,7 @@ use shared_entity::data::{AppResponse, JsonAppResponse};
 use shared_entity::dto::WorkspaceMembersParams;
 use sqlx::types::uuid;
 
-use crate::component::auth::jwt::UserUuid;
+use crate::component::auth::jwt::{UserUid, UserUuid};
 use actix_web::web::{Data, Json};
 use actix_web::Result;
 use actix_web::{web, Scope};
@@ -24,10 +24,10 @@ pub fn workspace_scope() -> Scope {
 
 #[instrument(skip_all, err)]
 async fn list_handler(
-  uuid: UserUuid,
+  uid: UserUid,
   state: Data<AppState>,
 ) -> Result<JsonAppResponse<AFWorkspaces>> {
-  let workspaces = biz::workspace::get_workspaces(&state.pg_pool, &uuid).await?;
+  let workspaces = biz::workspace::get_workspaces(&state.pg_pool, uid.0).await?;
   Ok(AppResponse::Ok().with_data(workspaces).into())
 }
 

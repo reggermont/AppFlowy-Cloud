@@ -6,11 +6,8 @@ use database_entity::{AFRole, AFWorkspaceMember, AFWorkspaces};
 use shared_entity::{app_error::AppError, error_code::ErrorCode};
 use sqlx::{types::uuid, PgPool};
 
-pub async fn get_workspaces(
-  pg_pool: &PgPool,
-  user_uuid: &uuid::Uuid,
-) -> Result<AFWorkspaces, AppError> {
-  let workspaces = select_all_workspaces_owned(pg_pool, user_uuid).await?;
+pub async fn get_workspaces(pg_pool: &PgPool, uid: i64) -> Result<AFWorkspaces, AppError> {
+  let workspaces = select_all_workspaces_owned(pg_pool, uid).await?;
   Ok(AFWorkspaces(workspaces))
 }
 

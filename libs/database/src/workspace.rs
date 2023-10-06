@@ -7,16 +7,14 @@ use database_entity::{AFRole, AFUserProfileView, AFWorkspace, AFWorkspaceMember}
 
 pub async fn select_all_workspaces_owned(
   pool: &PgPool,
-  owner_uuid: &Uuid,
+  uid: i64,
 ) -> Result<Vec<AFWorkspace>, sqlx::Error> {
   sqlx::query_as!(
     AFWorkspace,
     r#"
-        SELECT * FROM public.af_workspace WHERE owner_uid = (
-            SELECT uid FROM public.af_user WHERE uuid = $1
-            )
+        SELECT * FROM public.af_workspace WHERE owner_uid = $1
         "#,
-    owner_uuid
+    uid,
   )
   .fetch_all(pool)
   .await

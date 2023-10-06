@@ -17,9 +17,10 @@ use secrecy::{ExposeSecret, Secret};
 use snowflake::Snowflake;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::TcpListener;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::component::storage_proxy::CollabStorageProxy;
 use database::collab::CollabPostgresDBStorageImpl;
@@ -133,6 +134,9 @@ pub async fn init_state(config: &Config) -> AppState {
     s3_bucket,
     redis_client,
     collab_storage,
+    user_uid_by_uuid: Arc::new(Mutex::new(lru::LruCache::new(
+      NonZeroUsize::new(100_000).unwrap(),
+    ))),
   }
 }
 

@@ -4,11 +4,12 @@ use crate::config::config::Config;
 use chrono::{DateTime, Utc};
 
 use snowflake::Snowflake;
+use sqlx::types::Uuid;
 use sqlx::PgPool;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -20,6 +21,7 @@ pub struct AppState {
   pub s3_bucket: s3::Bucket,
   pub redis_client: redis::aio::ConnectionManager,
   pub collab_storage: Storage<CollabStorageProxy>,
+  pub user_uid_by_uuid: Arc<Mutex<lru::LruCache<Uuid, i64>>>,
 }
 
 impl AppState {
