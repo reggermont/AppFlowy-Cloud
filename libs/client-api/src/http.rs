@@ -668,10 +668,6 @@ impl Client {
 
   #[instrument(level = "debug", skip_all, err)]
   pub async fn sign_out(&self) -> Result<(), AppResponseError> {
-    if self.token.read().is_empty() {
-      return Ok(());
-    }
-
     self.gotrue_client.logout(&self.access_token()?).await?;
     self.token.write().unset();
     Ok(())
