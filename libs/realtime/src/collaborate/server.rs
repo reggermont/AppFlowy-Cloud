@@ -174,7 +174,7 @@ where
 {
   type Result = ResponseFuture<Result<(), RealtimeError>>;
 
-  fn handle(&mut self, client_msg: ClientMessage<U>, ctx: &mut Context<Self>) -> Self::Result {
+  fn handle(&mut self, client_msg: ClientMessage<U>, _ctx: &mut Context<Self>) -> Self::Result {
     let ClientMessage { user, message } = client_msg;
     trace!(
       "Receive message from client:{} message:{}",

@@ -121,7 +121,7 @@ where
       .server
       .send(Connect {
         socket: ctx.address().recipient(),
-        user,
+        user: self.user.clone(),
       })
       .into_actor(self)
       .then(|res, _session, ctx| {
