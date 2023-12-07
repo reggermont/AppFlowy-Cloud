@@ -43,22 +43,23 @@ where
   }
 
   pub async fn contains_user(&self, object_id: &str, user: &U) -> Result<bool, Error> {
-    let group_by_object_id = self.group_by_object_id.read().await;
+    let group_by_object_id = self.group_by_object_id.try_read()?;
     if let Some(group) = group_by_object_id.get(object_id) {
-      Ok(group.subscribers.read().await.get(user).is_some())
+      Ok(group.subscribers.try_read()?.get(user).is_some())
     } else {
       Ok(false)
     }
   }
 
-  pub async fn remove_user(&self, object_id: &str, user: &U) {
-    let group_by_object_id = self.group_by_object_id.read().await;
+  pub async fn remove_user(&self, object_id: &str, user: &U) -> Result<(), Error> {
+    let group_by_object_id = self.group_by_object_id.try_read()?;
     if let Some(group) = group_by_object_id.get(object_id) {
-      if let Some(subscriber) = group.subscribers.write().await.remove(user) {
+      if let Some(subscriber) = group.subscribers.try_write()?.remove(user) {
         trace!("Remove subscriber: {}", subscriber.origin);
         subscriber.stop().await;
       }
     }
+    Ok(())
   }
 
   pub async fn contains_group(&self, object_id: &str) -> Result<bool, Error> {
@@ -67,7 +68,12 @@ where
   }
 
   pub async fn get_group(&self, object_id: &str) -> Option<Arc<CollabGroup<U>>> {
-    self.group_by_object_id.read().await.get(object_id).cloned()
+    self
+      .group_by_object_id
+      .try_read()
+      .ok()?
+      .get(object_id)
+      .cloned()
   }
 
   pub async fn remove_group(&self, object_id: &str) {
